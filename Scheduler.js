@@ -94,11 +94,11 @@ const WeekNavigator = (props) => {
 
     return (
         <div className="date-nav">
-            <div><button onClick={()=>{onResetToday&&onResetToday()}}>Today</button></div>
-            <div>
-                <span onClick={prevClick}>&#8678;</span>
-                <span>{mmStr} {ddStr}, {sDt.getFullYear()}</span>
-                <span onClick={nextClick}>&#8680;</span>
+            <span className="date-info">{mmStr} {ddStr}, {sDt.getFullYear()}</span>
+            <div className="button-container">
+                <button className='prev' onClick={prevClick}></button>
+                <button onClick={()=>{onResetToday&&onResetToday()}}>Today</button>
+                <button className='next' onClick={nextClick}></button>
             </div>
         </div>
     )
