@@ -69,10 +69,11 @@ const setBookedCells = (startAndEndNodes, booking, popupRef, bookingIdx) => {
         if (isTaken) {
             let infoNode = startAndEndNodes[0].querySelector('.info');
             showToolTip = (x,y) => {
-                const sTime = booking.start.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
-                const eTime = booking.end.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+                const timeFormat = {hour:'2-digit',minute:'2-digit'};
+                const sTime = booking.start.toLocaleTimeString('en',timeFormat);
+                const eTime = booking.end.toLocaleTimeString('en',timeFormat);
                 popupRef.current.innerHTML =
-                        `Date: ${getFullDate(booking.start)} <br/>` +
+                        `Date: ${booking.start.toLocaleDateString('en',{year:'numeric',month:'long',day:'2-digit'})} <br/>` +
                         `Time: ${sTime} - ${eTime}<br/>` +
                         `${JSON.stringify(booking.info,null,' ').replace(/\"|{|}/g,'')}`;
                 popupRef.current.style.display = 'block';
@@ -343,8 +344,6 @@ const BookingTimeGrid = (props) => {
         }
     }
 
-    window.bookedTimes = bookedTimes;
-
     useEffect(()=>{
         if (timeGridEntries.length > 0) {
             console.log(">>> Adding Outside Grid Listener");
@@ -366,7 +365,7 @@ const BookingTimeGrid = (props) => {
     }, [timeGridEntries]);
 
     useEffect(()=> {
-        console.log(">>> Rending Time Grid Entries ")
+        console.log(">>> Rending Time Grid Entries ",date)
         setTimeGridEntries(
             generateTimeGridEntries(
                 numOfHours,
