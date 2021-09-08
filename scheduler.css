@@ -170,12 +170,12 @@
     display: block !important;
 }
 
-.grid-entries > div.booked {
+.grid-entries > div.scheduled {
     background: #ace1af;
     border-left:0;
     border-top: 1px dashed #ccc !important;
 }
-.grid-entries > div.booked.sched-start {
+.grid-entries > div.scheduled.sched-start {
     border-top: 1px solid #000 !important;
 }
 .grid-entries > div.taken {
@@ -199,4 +199,33 @@
     text-align: left;
     padding: 8px;
     display:none;
+}
+.msc.month-view .dow-heading {
+    display: flex;
+    overflow: unset;
+}
+.msc.month-view .dow-heading span {
+    flex: 1 1 auto;
+    width: 100%;
+}
+.month-grid-container {
+    display: flex;
+    height: 100%;
+}
+.month-grid-container .month-grid-col {
+    flex: 1 1 auto;
+    border-right: 1px solid black;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.month-grid-container .month-grid-col > div {
+    border-top: 1px solid black;
+    flex: 1;
+    font-size: 0.7em;
+    padding-left: 3px;
+}
+.month-grid-col .not-current-month {
+    background:#eaeaea;
 }

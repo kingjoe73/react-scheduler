@@ -1,35 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import BookingTimeGrid from './BookingTimeGrid';
+import MonthViewGrid from './MonthViewGrid';
+import { isDateToday, getStartDate, makeItSaturday, makeItSunday  } from './Utils';
 import './scheduler.css';
 
-const getStartDate = () => {
-    const today = new Date();
-    today.setTime(today.getTime()-(today.getDay()*86400000)); // Start on a Sunday
-    return today;
-}
+
 
 const generateDowHeadings = (daysOfWeek, date, isMonthView) => {
-    const today = new Date();
     const retVal = [];
     const dt = new Date();
     dt.setTime(date.getTime());
 
     if (!isMonthView) {
-        if (dt.getDay() !== 0) {
-            dt.setTime(dt.getTime()-(dt.getDay()*86400000));
-        }
+        makeItSunday(dt);
     }
 
     daysOfWeek.forEach((dow,idx) => {
-        let isToday = (today.getFullYear() === dt.getFullYear() &&
-                       today.getMonth() === dt.getMonth() &&
-                       today.getDate() === dt.getDate()) ;
-
         let content = `${dt.toLocaleDateString('en-us',{day:'2-digit'})}-${dow}`;
+        let isToday = false;
+
         if (isMonthView) {
             content = dow;
+        } else {
+            isToday = isDateToday(dt);
         }
-        if (isToday && !isMonthView) {
+
+        if (isToday) {
             retVal.push(<span className={'today'} key={idx}>{content}</span>);
         } else {
             retVal.push(<span key={idx}>{content}</span>);
@@ -37,7 +33,10 @@ const generateDowHeadings = (daysOfWeek, date, isMonthView) => {
 
         dt.setDate(dt.getDate()+1);
     });
-    retVal.push(<span key={-1}>&nbsp;</span>);
+
+    if (!isMonthView)
+        retVal.push(<span key={-1}>&nbsp;</span>);
+
     return retVal;
 }
 
@@ -80,13 +79,8 @@ const DateNavigator = (props) => {
     eDt.setTime(date.getTime());
 
     if (!isMonthView) {
-        if (sDt.getDay() !== 0) {
-            sDt.setTime(sDt.getTime()-(sDt.getDay()*86400000));
-        }
-
-        if (eDt.getDay() !== 6) {
-            eDt.setTime(eDt.getTime()+((6-eDt.getDay())*86400000));
-        }
+        makeItSunday(sDt);
+        makeItSaturday(eDt);
     }
 
     let mmStr = sDt.toLocaleDateString('en-us',{month:'long'});
@@ -134,57 +128,66 @@ const DateNavigator = (props) => {
 }
 
 const Scheduler = (props) => {
-    const { bookedTimes, monthlyData, onBookingSelected, onDeleteBooking, onBookingUpdated, onShowMonth } = props;
-    const bookingBlockSize = props.bookingBlockSize||15;
+    const { scheduledData, monthlyData, onBookingSelected, onDeleteBooking, onBookingUpdated, onShowMonth } = props;
+    const schedBlockSize = props.schedBlockSize||15;
     const dowParam = props.daysOfWeek||['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const numOfHours = props.numOfHours||24;
 
     const [ date, setDate ] = useState(getStartDate());
     const [ showMonth, setShowMonth ] = useState(false);
     const [ monthData, setMonthData ] = useState(monthlyData);
+    const [ monthViewDates, setMonthViewDates ] = useState({start:null, end:null});
     const dowHeadingRef = useRef();
     const timeContainerRef = useRef();
-    const hrSegments = Math.ceil(60/bookingBlockSize);
+    const hrSegments = Math.ceil(60/schedBlockSize);
 
     const scrollHandler = (e) => {
         timeContainerRef.current.scroll(0, e.target.scrollTop+0.1);
         dowHeadingRef.current.scroll(e.target.scrollLeft+0.1, 0);
     }
 
-    const toggleMonthWkView = async(isMonthView) => {
-        let newDt = new Date();
-        newDt.setTime(date.getTime());
+    const getMonthViewDates = () => {
+        let start = new Date(date.getFullYear(),date.getMonth(),1);
+        let end = new Date(date.getFullYear(),date.getMonth()+1,0);
+        let numberOfDays = end.getDate();
 
-        if (isMonthView) {
-            newDt.setDate(1);
-        } else {
-            if (newDt.getDay() !== 0) {
-                newDt.setTime(newDt.getTime()-(newDt.getDay()*86400000));
-            }
+        let sDay = start.getDay();
+        let eDay = end.getDay();
+        if (sDay !== 0) {
+            numberOfDays += sDay;
+            makeItSunday(start);
         }
+        if (eDay !== 6) {
+            numberOfDays += (6-eDay);
+            makeItSaturday(end);
+        }
+        return {start,end,numberOfDays};
+    }
 
+    const toggleMonthWkView = (isMonthView) => {
+        if (isMonthView) {
+            setShowMonth(true);
+            setMonthViewDates(getMonthViewDates());
+        } else {
+            setShowMonth(false);
+        }
+    }
 
-        setDate(newDt);
-        setShowMonth(isMonthView);
+    useEffect(()=> {
+        if (showMonth) {
+            setMonthViewDates(getMonthViewDates());
+        }
+    }, [date]);
 
-        if (isMonthView && onShowMonth) {
-            const start = new Date(newDt.getTime())
-            const end = new Date(start.getFullYear(), start.getMonth()+1, 0);
-
-            if (start.getDay() !== 0) {
-                start.setTime(start.getTime()-(start.getDay()*86400000));
-            }
-            if (end.getDay() !== 6) {
-                end.setTime(end.getTime()+((6-end.getDay())*86400000));
-            }
-    
-
-            const data = await onShowMonth(start, end);
+    useEffect(async ()=>{
+        if (!showMonth) return;
+        if (monthViewDates.start) {
+            const data = await onShowMonth(monthViewDates.start, monthViewDates.end);
             if (data) {
                 setMonthData(data);
             }
         }
-    }
+    }, [monthViewDates]);
 
     return (
         <div className="scheduler">
@@ -201,28 +204,37 @@ const Scheduler = (props) => {
                            onToggleDisplay={toggleMonthWkView}
                            onResetToday={()=>{setDate(getStartDate())}}/>
 
-            <div className="msc">
+            <div className={`msc ${showMonth?'month-view':''}`}>
                 <div className="heading">
-                    <div className="time-heading">&nbsp;</div>
+                    {!showMonth && <div className="time-heading">&nbsp;</div> }
                     <div className="dow-heading" ref={dowHeadingRef}>{generateDowHeadings(dowParam, date, showMonth)}</div>
                 </div>
-                <div className="scheduler-container">
-                    <div className="time-container" ref={timeContainerRef} >{generateTimeEntries(numOfHours, hrSegments, showMonth)}</div>
-
-                    <BookingTimeGrid
-                        numOfHours={numOfHours}
-                        bookingBlockSize={bookingBlockSize}
-                        daysOfWeek={dowParam}
-                        hrSegments={hrSegments}
-                        date={date}
-                        scrollHandler={scrollHandler}
-                        bookedTimes={bookedTimes}
-                        monthlyData={monthData}
-                        onBookingSelected={onBookingSelected}
-                        onDeleteBooking={onDeleteBooking}
-                        onBookingUpdated={onBookingUpdated}
+                {
+                    showMonth &&
+                    <MonthViewGrid
+                        currentDate={date}
+                        monthData={monthData}
+                        {...monthViewDates}
                     />
-                </div>
+                }
+                {
+                    !showMonth &&
+                    <div className="scheduler-container">
+                        <div className="time-container" ref={timeContainerRef} >{generateTimeEntries(numOfHours, hrSegments, showMonth)}</div>
+                        <BookingTimeGrid
+                            numOfHours={numOfHours}
+                            schedBlockSize={schedBlockSize}
+                            daysOfWeek={dowParam}
+                            hrSegments={hrSegments}
+                            date={date}
+                            scrollHandler={scrollHandler}
+                            scheduledData={scheduledData}
+                            onBookingSelected={onBookingSelected}
+                            onDeleteBooking={onDeleteBooking}
+                            onBookingUpdated={onBookingUpdated}
+                        />
+                    </div>
+                }
             </div>
         </div>
     )
